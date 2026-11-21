@@ -173,6 +173,17 @@ python run_public.py
 ```
 This generates a secure public HTTPS URL (e.g., `https://xxxx-xx.ngrok-free.app`) for multi-laboratory team evaluation.
 
+#### ☁️ 1-Click Cloud Deployment to Render (Render.com):
+1. Push your changes to your GitHub repository ([`aarushdubey/LabClarity-AI`](https://github.com/aarushdubey/LabClarity-AI)).
+2. Go to **[dashboard.render.com](https://dashboard.render.com/)** and sign in with GitHub.
+3. Click **New +** &rarr; **Web Service**.
+4. Select repository **`LabClarity-AI`**.
+5. Render will automatically detect the Python environment:
+   * **Runtime:** `Python 3`
+   * **Build Command:** `pip install -r requirements.txt`
+   * **Start Command:** `gunicorn app:app --bind 0.0.0.0:$PORT`
+6. Click **Deploy Web Service** — in 2 minutes, your project is live globally with free HTTPS (e.g., `https://labclarity-ai.onrender.com`)!
+
 ---
 
 ## 🧪 Automated Testing
