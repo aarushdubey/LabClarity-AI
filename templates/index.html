@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LabClarity AI | Research Microscopy Image Enhancer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="lab-theme">
+  <!-- Glowing Background Orbs -->
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+  <div class="bg-glow bg-glow-3"></div>
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand-group">
+        <div class="brand-icon">
+          <i class="fa-solid fa-microscope"></i>
+          <span class="icon-pulse"></span>
+        </div>
+        <div>
+          <div class="brand-title">LabClarity <span class="ai-badge">AI</span></div>
+          <div class="brand-tagline">Research Microscopy Image Enhancer &bull; Pharma & Life Sciences (Team 4)</div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <span class="status-indicator live">
+          <span class="status-dot"></span> System Ready
+        </span>
+        <button class="btn btn-secondary btn-sm" id="btnOpenChat">
+          <i class="fa-solid fa-wand-magic-sparkles"></i> AI Assistant
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Non-Diagnostic Regulatory Notice -->
+  <div class="regulatory-banner">
+    <div class="banner-content">
+      <i class="fa-solid fa-circle-exclamation banner-icon"></i>
+      <span><strong>Research Use Only (RUO):</strong> {{ disclaimer }}</span>
+    </div>
+  </div>
+
+  <!-- Main Content Layout -->
+  <main class="main-layout">
+    <!-- Left Column: Controls & Configuration -->
+    <aside class="control-panel glass-card">
+      <div class="panel-header">
+        <h2><i class="fa-solid fa-sliders"></i> Specimen & Controls</h2>
+        <span class="badge-accent">v1.0.0</span>
+      </div>
+
+      <!-- Quick Sample Specimen Selector -->
+      <div class="control-section">
+        <label class="section-label">
+          <i class="fa-solid fa-flask-vial"></i> Load Research Sample
+        </label>
+        <div class="sample-grid">
+          {% for s in samples %}
+          <button class="sample-card" data-sample-id="{{ s.id }}">
+            <div class="sample-title">{{ s.title }}</div>
+            <div class="sample-modality">{{ s.modality }}</div>
+          </button>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Upload Zone -->
+      <div class="control-section">
+        <label class="section-label">
+          <i class="fa-solid fa-cloud-arrow-up"></i> Or Upload Lab Specimen
+        </label>
+        <div class="drop-zone" id="dropZone">
+          <input type="file" id="fileInput" accept=".png,.jpg,.jpeg,.tif,.tiff,.bmp,.webp" hidden>
+          <div class="drop-zone-prompt">
+            <i class="fa-solid fa-dna drop-icon"></i>
+            <p>Drag & drop microscopy image here</p>
+            <span class="browse-link">or browse files (TIFF, PNG, JPG, WebP)</span>
+          </div>
+          <div class="file-preview-strip hidden" id="filePreviewStrip">
+            <i class="fa-solid fa-file-image"></i>
+            <span id="uploadedFileName">specimen.png</span>
+            <button class="btn-clear" id="btnClearFile"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pipeline Presets -->
+      <div class="control-section">
+        <label class="section-label">
+          <i class="fa-solid fa-wand-magic"></i> Enhancement Preset
+        </label>
+        <div class="preset-selector" id="presetSelector">
+          {% for key, val in presets.items() %}
+          <div class="preset-option {% if loop.first %}active{% endif %}" data-preset="{{ key }}">
+            <div class="preset-name">{{ val.name }}</div>
+            <div class="preset-desc">{{ val.description }}</div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Calibration Parameters (Sliders) -->
+      <div class="control-section">
+        <div class="section-toggle" id="toggleAdvParams">
+          <label class="section-label cursor-pointer">
+            <i class="fa-solid fa-gauge-high"></i> Fine-Tuning Calibration
+          </label>
+          <i class="fa-solid fa-chevron-down" id="advChevron"></i>
+        </div>
+        <div class="param-drawer" id="paramDrawer">
+          <div class="slider-group">
+            <div class="slider-header">
+              <span>Poisson Denoise (Anscombe)</span>
+              <span class="slider-val" id="valDenoise">0.65</span>
+            </div>
+            <input type="range" id="denoiseSlider" min="0.0" max="1.0" step="0.05" value="0.65">
+          </div>
+
+          <div class="slider-group">
+            <div class="slider-header">
+              <span>Super-Resolution Scale</span>
+              <span class="slider-val" id="valUpscale">1x</span>
+            </div>
+            <div class="pill-group" id="upscalePills">
+              <button class="pill-btn active" data-val="1">1x (Native)</button>
+              <button class="pill-btn" data-val="2">2x Upscale</button>
+              <button class="pill-btn" data-val="4">4x Ultra</button>
+            </div>
+          </div>
+
+          <div class="slider-group">
+            <div class="slider-header">
+              <span>CLAHE Contrast Clip</span>
+              <span class="slider-val" id="valClahe">2.5</span>
+            </div>
+            <input type="range" id="claheSlider" min="0.5" max="6.0" step="0.1" value="2.5">
+          </div>
+
+          <div class="slider-group">
+            <div class="slider-header">
+              <span>Boundary Sharpness</span>
+              <span class="slider-val" id="valSharpness">0.35</span>
+            </div>
+            <input type="range" id="sharpnessSlider" min="0.0" max="1.0" step="0.05" value="0.35">
+          </div>
+
+          <div class="checkbox-group">
+            <label class="custom-checkbox">
+              <input type="checkbox" id="flatFieldCheckbox">
+              <span class="checkmark"></span>
+              <span>Flat-Field Background Normalization</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Process CTA -->
+      <button class="btn btn-primary btn-block" id="btnEnhance">
+        <span class="btn-text"><i class="fa-solid fa-sparkles"></i> Enhance & Analyze Specimen</span>
+        <span class="spinner hidden"><i class="fa-solid fa-circle-notch fa-spin"></i> Processing...</span>
+      </button>
+    </aside>
+
+    <!-- Right Column: Interactive Stage & Scientific Report -->
+    <section class="stage-panel">
+      <!-- Interactive Visual Comparison Card -->
+      <div class="visual-card glass-card">
+        <div class="card-toolbar">
+          <div class="toolbar-title">
+            <i class="fa-solid fa-code-compare"></i> Real-Time Specimen Comparison
+          </div>
+          <div class="toolbar-controls">
+            <button class="btn-tool active" id="btnSliderMode" title="Split Comparison Slider">
+              <i class="fa-solid fa-arrows-left-right"></i> Split Slider
+            </button>
+            <button class="btn-tool" id="btnSideMode" title="Side-by-Side Dual View">
+              <i class="fa-solid fa-table-columns"></i> Side-by-Side
+            </button>
+            <button class="btn-tool" id="btnZoomToggle" title="Zoom Loupe">
+              <i class="fa-solid fa-magnifying-glass-plus"></i> Inspect
+            </button>
+          </div>
+        </div>
+
+        <!-- Comparison Canvas Container -->
+        <div class="comparison-stage" id="comparisonStage">
+          <!-- Placeholder state -->
+          <div class="empty-state" id="emptyState">
+            <div class="empty-state-icon">
+              <i class="fa-solid fa-atom fa-spin"></i>
+            </div>
+            <h3>No Specimen Loaded</h3>
+            <p>Select a pre-loaded sample from the left panel or upload your own lab microscopy image to begin restoration.</p>
+          </div>
+
+          <!-- Split Comparison Slider Wrapper -->
+          <div class="comparison-wrapper hidden" id="comparisonWrapper">
+            <div class="image-layer raw-layer">
+              <img id="rawImage" src="" alt="Raw Microscopy Specimen">
+              <span class="image-label raw-label"><i class="fa-solid fa-camera"></i> Raw Acquisition</span>
+            </div>
+            <div class="image-layer enhanced-layer" id="enhancedLayer">
+              <img id="enhancedImage" src="" alt="Enhanced Microscopy Specimen">
+              <span class="image-label enhanced-label"><i class="fa-solid fa-sparkles"></i> LabClarity AI Enhanced</span>
+            </div>
+            <!-- Draggable divider line -->
+            <div class="slider-divider" id="sliderDivider">
+              <div class="divider-handle">
+                <i class="fa-solid fa-arrows-left-right"></i>
+              </div>
+            </div>
+          </div>
+
+          <!-- Side-by-side Dual View Wrapper (Alternative mode) -->
+          <div class="side-wrapper hidden" id="sideWrapper">
+            <div class="side-box">
+              <div class="side-label"><i class="fa-solid fa-camera"></i> Raw Specimen</div>
+              <img id="sideRawImage" src="" alt="Raw">
+            </div>
+            <div class="side-box">
+              <div class="side-label"><i class="fa-solid fa-sparkles"></i> Enhanced Specimen</div>
+              <img id="sideEnhancedImage" src="" alt="Enhanced">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quantitative Biophysical Metrics Panel -->
+      <div class="metrics-grid glass-card" id="metricsPanel">
+        <div class="metric-card">
+          <div class="metric-header">
+            <span>Peak SNR (PSNR)</span>
+            <i class="fa-solid fa-signal metric-icon"></i>
+          </div>
+          <div class="metric-value" id="valPsnr">-- dB</div>
+          <div class="metric-sub" id="subPsnr">Fidelity metric</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-header">
+            <span>Signal-to-Noise (SNR)</span>
+            <i class="fa-solid fa-chart-line metric-icon"></i>
+          </div>
+          <div class="metric-value" id="valSnr">-- dB</div>
+          <div class="metric-sub" id="subSnr">Poisson noise suppression</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-header">
+            <span>Structural Similarity (SSIM)</span>
+            <i class="fa-solid fa-microchip metric-icon"></i>
+          </div>
+          <div class="metric-value" id="valSsim">--</div>
+          <div class="metric-sub" id="subSsim">Non-hallucinatory score</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-header">
+            <span>Tenengrad Sharpness</span>
+            <i class="fa-solid fa-bullseye metric-icon"></i>
+          </div>
+          <div class="metric-value" id="valSharpnessMetric">--</div>
+          <div class="metric-sub positive" id="subSharpnessGain">+0% membrane gain</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-header">
+            <span>Shannon Entropy</span>
+            <i class="fa-solid fa-barcode metric-icon"></i>
+          </div>
+          <div class="metric-value" id="valEntropy">-- bpp</div>
+          <div class="metric-sub" id="subEntropy">Information richness</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-header">
+            <span>Spatial Resolution</span>
+            <i class="fa-solid fa-expand metric-icon"></i>
+          </div>
+          <div class="metric-value" id="valResolution">-- x --</div>
+          <div class="metric-sub" id="subResolution">Pixel dimensions</div>
+        </div>
+      </div>
+
+      <!-- AI Research Audit & Laboratory Report -->
+      <div class="report-panel glass-card hidden" id="reportPanel">
+        <div class="report-header">
+          <div class="report-title-group">
+            <h3><i class="fa-solid fa-file-waveform"></i> AI Specimen Characterization & Methods Log</h3>
+            <span class="engine-tag" id="aiEngineTag">LabClarity GenAI</span>
+          </div>
+          <div class="export-actions">
+            <button class="btn btn-secondary btn-sm" id="btnExportTiff">
+              <i class="fa-solid fa-download"></i> TIFF (High-Bit)
+            </button>
+            <button class="btn btn-secondary btn-sm" id="btnExportPng">
+              <i class="fa-solid fa-image"></i> PNG
+            </button>
+            <button class="btn btn-secondary btn-sm" id="btnExportMd">
+              <i class="fa-solid fa-file-lines"></i> Methods Log (MD)
+            </button>
+          </div>
+        </div>
+
+        <div class="report-body">
+          <div class="tags-row" id="tagsRow">
+            <span class="tag tag-cyan" id="tagModality">Modality: Detecting...</span>
+            <span class="tag tag-emerald" id="tagSpecimen">Specimen: Analyzing...</span>
+            <span class="tag tag-violet" id="tagStain">Stain: Assessing...</span>
+          </div>
+
+          <div class="report-section">
+            <h4><i class="fa-solid fa-triangle-exclamation"></i> Optical Artifact Diagnosis</h4>
+            <p id="txtArtifactDiagnosis">Running optical and sensor artifact analysis...</p>
+          </div>
+
+          <div class="report-section">
+            <h4><i class="fa-solid fa-circle-nodes"></i> Cellular Morphological Observations</h4>
+            <p id="txtMorphology">Detecting cellular structures, organelles, and membrane boundaries...</p>
+          </div>
+
+          <div class="report-section">
+            <h4><i class="fa-solid fa-book-medical"></i> Reproducible Laboratory Protocol (Materials & Methods)</h4>
+            <div class="code-block-wrapper">
+              <pre id="txtProtocol">Pipeline log...</pre>
+              <button class="btn-copy" id="btnCopyProtocol" title="Copy to Clipboard">
+                <i class="fa-solid fa-copy"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="report-section">
+            <h4><i class="fa-solid fa-lightbulb"></i> Downstream Imaging Recommendations</h4>
+            <ul class="rec-list" id="recList">
+              <li>Optimization guidelines will appear here.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Interactive AI Assistant Modal / Drawer -->
+  <div class="chat-modal hidden" id="chatModal">
+    <div class="chat-header">
+      <div class="chat-title">
+        <i class="fa-solid fa-robot"></i> LabClarity AI Research Assistant
+      </div>
+      <button class="btn-close" id="btnCloseChat"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="chat-disclaimer">
+      <i class="fa-solid fa-info-circle"></i> Non-diagnostic research consultation
+    </div>
+    <div class="chat-messages" id="chatMessages">
+      <div class="chat-msg bot-msg">
+        <div class="msg-avatar"><i class="fa-solid fa-microscope"></i></div>
+        <div class="msg-text">
+          Hello! I am your LabClarity Research Assistant. Ask me anything about your specimen's optical physics, fluorophore spectra, noise models (e.g., Poisson Anscombe transforms), or imaging protocols.
+        </div>
+      </div>
+    </div>
+    <div class="chat-input-bar">
+      <input type="text" id="chatInput" placeholder="Ask about this specimen or image processing..." autocomplete="off">
+      <button class="btn btn-primary" id="btnSendChat"><i class="fa-solid fa-paper-plane"></i></button>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast-notification hidden" id="toast">
+    <i class="fa-solid fa-circle-check"></i>
+    <span id="toastMsg">Operation successful</span>
+  </div>
+
+  <!-- Scripts -->
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
