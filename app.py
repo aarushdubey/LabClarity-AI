@@ -377,7 +377,7 @@ def health_check():
 
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 5000))
+    port = int(os.getenv("PORT", 5001))
     host = os.getenv("HOST", "127.0.0.1")
     debug = os.getenv("FLASK_DEBUG", "1") == "1"
     print(f"==================================================")

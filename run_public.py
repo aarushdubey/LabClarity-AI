@@ -14,7 +14,7 @@ load_dotenv()
 from pyngrok import ngrok, conf
 from app import app
 
-PORT = int(os.getenv("PORT", 5000))
+PORT = int(os.getenv("PORT", 5001))
 AUTHTOKEN = os.getenv("NGROK_AUTHTOKEN", "").strip()
 
 

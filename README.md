@@ -155,17 +155,17 @@ GROQ_MODEL=llama-3.3-70b-versatile
 # Optional: Get your free tunnel authtoken at https://ngrok.com
 NGROK_AUTHTOKEN=your_ngrok_authtoken_here
 
-PORT=5000
+PORT=5001
 FLASK_DEBUG=1
 ```
-*(Note: If no Groq API key is provided, LabClarity AI automatically utilizes its built-in offline biophysical heuristic analysis engine with zero runtime errors!)*
+*(Note: Port 5001 is used by default to prevent conflicts with macOS AirPlay Receiver on port 5000. If no Groq API key is provided, LabClarity AI automatically utilizes its built-in offline biophysical heuristic analysis engine with zero runtime errors!)*
 
 ### 4. Run the Application
 #### Local Development Server:
 ```bash
 python run_local.py
 ```
-Open **`http://127.0.0.1:5000`** in your browser.
+Open **`http://127.0.0.1:5001`** in your browser.
 
 #### Public Global Deployment via Ngrok (Milestone 5):
 ```bash
