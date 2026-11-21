@@ -443,7 +443,18 @@ document.addEventListener("DOMContentLoaded", () => {
     const clamped = Math.max(0, Math.min(100, percentage));
     sliderDivider.style.left = `${clamped}%`;
     enhancedLayer.style.width = `${clamped}%`;
+    if (comparisonWrapper && comparisonWrapper.offsetWidth > 0) {
+      enhancedImage.style.width = `${comparisonWrapper.offsetWidth}px`;
+      enhancedImage.style.maxWidth = "none";
+    }
   }
+
+  window.addEventListener("resize", () => {
+    if (comparisonWrapper && comparisonWrapper.offsetWidth > 0) {
+      enhancedImage.style.width = `${comparisonWrapper.offsetWidth}px`;
+      enhancedImage.style.maxWidth = "none";
+    }
+  });
 
   sliderDivider.addEventListener("mousedown", () => {
     isDragging = true;
