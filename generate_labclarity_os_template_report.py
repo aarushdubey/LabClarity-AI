@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
 """
-Generate comprehensive academic project report for LabClarity AI
-using the exact template, styling, margins, and structure of OS_Project_Report.docx.
+Generate academic project report for LabClarity AI
+using the exact template from OS_Project_Report.docx, updated per user instructions:
+1. Completely removes the stale <w:sdt> table of contents from the 1st page so Page 1 is purely the Cover Page.
+2. Removes Sommayadeep Saha from the team roster (now strictly 4 members: Aarush, Sachin, Pradyun, Naseer).
+3. Constructs the Table of Contents as an official MS Word Table (<w:tbl>) with Sl. No., Chapter/Section Title, and Page No.
+4. Uses JUSTIFIED alignment for the entire report.
+5. Sets line spacing strictly to 1.15 across all paragraphs.
+6. Sets font family to Times New Roman and font size to 14pt for all body text.
 """
 
 import os
+import subprocess
 import docx
 from docx import Document
 from docx.shared import Inches, Pt, RGBColor
@@ -17,16 +24,16 @@ TEMPLATE_PATH = "/Users/aarushdubey/Downloads/OS_Project_Report.docx"
 OUTPUT_PATH = "/Users/aarushdubey/Downloads/gen_ai_project/LabClarity_AI_Project_Report.docx"
 DOWNLOADS_OUTPUT_PATH = "/Users/aarushdubey/Downloads/LabClarity_AI_Project_Report.docx"
 
-# Color palette matching OS_Project_Report.docx
+# Color palette
 COLOR_NAVY = RGBColor(0x1F, 0x38, 0x64)      # Heading 1 and primary titles
 COLOR_RED = RGBColor(0xC0, 0x00, 0x00)       # Heading 2 subtitles
-COLOR_DARK = RGBColor(0x20, 0x21, 0x24)      # Body text
-COLOR_MUTED = RGBColor(0x5F, 0x63, 0x68)     # Secondary / captions
+COLOR_DARK = RGBColor(0x11, 0x18, 0x27)      # Body text
+COLOR_MUTED = RGBColor(0x4B, 0x55, 0x63)     # Secondary / captions
 HEX_NAVY = "1F3864"
-HEX_LIGHT_BG = "F2F4F7"
-HEX_BORDER = "D1D5DB"
+HEX_LIGHT_BG = "F3F4F6"
+HEX_BORDER = "9CA3AF"
 
-def set_cell_margins(cell, top=100, bottom=100, left=150, right=150):
+def set_cell_margins(cell, top=100, bottom=100, left=140, right=140):
     """Set inner cell padding in dxa (1 pt = 20 dxa)."""
     tcPr = cell._tc.get_or_add_tcPr()
     tcMar = OxmlElement('w:tcMar')
@@ -43,265 +50,251 @@ def set_cell_bg(cell, hex_color):
     shd = parse_xml(f'<w:shd {nsdecls("w")} w:fill="{hex_color}"/>')
     tcPr.append(shd)
 
-def set_table_borders(table, color="D1D5DB"):
-    """Set clean subtle borders on a table."""
+def set_table_borders(table, color="9CA3AF"):
+    """Set clean borders on a table."""
     tblPr = table._tbl.tblPr
     borders = parse_xml(
         f'<w:tblBorders {nsdecls("w")}>'
-        f'  <w:top w:val="single" w:sz="4" w:space="0" w:color="{color}"/>'
-        f'  <w:left w:val="none"/>'
+        f'  <w:top w:val="single" w:sz="6" w:space="0" w:color="{color}"/>'
+        f'  <w:left w:val="single" w:sz="4" w:space="0" w:color="{color}"/>'
         f'  <w:bottom w:val="single" w:sz="8" w:space="0" w:color="{color}"/>'
-        f'  <w:right w:val="none"/>'
+        f'  <w:right w:val="single" w:sz="4" w:space="0" w:color="{color}"/>'
         f'  <w:insideH w:val="single" w:sz="4" w:space="0" w:color="{color}"/>'
-        f'  <w:insideV w:val="none"/>'
+        f'  <w:insideV w:val="single" w:sz="4" w:space="0" w:color="{color}"/>'
         f'</w:tblBorders>'
     )
     tblPr.append(borders)
 
-def build_report():
-    print(f"Loading template from {TEMPLATE_PATH}...")
+def build_report_doc(toc_entries):
     doc = Document(TEMPLATE_PATH)
 
-    # Clear existing body paragraphs and tables while preserving sections, styles, and settings
-    # We remove paragraphs from body element
+    # 1. CRITICAL FIX: Completely purge ALL child nodes from body EXCEPT <w:sectPr>
+    # This completely eliminates the old <w:sdt> table of contents block that was stuck on Page 1!
     body = doc._body._element
     for child in list(body):
-        if child.tag.endswith(('p', 'tbl')):
+        if not child.tag.endswith('sectPr'):
             body.remove(child)
 
-    print("Template styles and layout preserved. Building LabClarity AI report content...")
+    # Configure Normal Style: strictly Times New Roman, 14pt, 1.15 line spacing, Justified
+    normal_style = doc.styles['Normal']
+    normal_style.font.name = 'Times New Roman'
+    normal_style.font.size = Pt(14)
+    normal_style.font.color.rgb = COLOR_DARK
+    normal_style.paragraph_format.line_spacing = 1.15
+    normal_style.paragraph_format.space_after = Pt(6)
+    normal_style.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
 
-    # Helper functions for paragraph generation
-    def add_p(text="", style='Normal', align=WD_ALIGN_PARAGRAPH.JUSTIFY, space_before=0, space_after=6, line_spacing=1.15):
-        p = doc.add_paragraph(text, style=style)
+    # Configure Heading Styles
+    h1_style = doc.styles['Heading 1']
+    h1_style.font.name = 'Times New Roman'
+    h1_style.font.size = Pt(17)
+    h1_style.font.bold = True
+    h1_style.font.color.rgb = COLOR_NAVY
+    h1_style.paragraph_format.line_spacing = 1.15
+    h1_style.paragraph_format.space_before = Pt(14)
+    h1_style.paragraph_format.space_after = Pt(5)
+
+    h2_style = doc.styles['Heading 2']
+    h2_style.font.name = 'Times New Roman'
+    h2_style.font.size = Pt(15)
+    h2_style.font.bold = True
+    h2_style.font.color.rgb = COLOR_RED
+    h2_style.paragraph_format.line_spacing = 1.15
+    h2_style.paragraph_format.space_before = Pt(10)
+    h2_style.paragraph_format.space_after = Pt(4)
+
+    h3_style = doc.styles['Heading 3']
+    h3_style.font.name = 'Times New Roman'
+    h3_style.font.size = Pt(14)
+    h3_style.font.bold = True
+    h3_style.font.color.rgb = COLOR_NAVY
+    h3_style.paragraph_format.line_spacing = 1.15
+    h3_style.paragraph_format.space_before = Pt(6)
+    h3_style.paragraph_format.space_after = Pt(2)
+
+    def add_p(text="", align=WD_ALIGN_PARAGRAPH.JUSTIFY, space_before=0, space_after=6, line_spacing=1.15, size=14, bold=False, italic=False, color=COLOR_DARK):
+        p = doc.add_paragraph()
         p.alignment = align
         p.paragraph_format.space_before = Pt(space_before)
         p.paragraph_format.space_after = Pt(space_after)
         p.paragraph_format.line_spacing = line_spacing
+        if text:
+            r = p.add_run(text)
+            r.font.name = 'Times New Roman'
+            r.font.size = Pt(size)
+            r.bold = bold
+            r.italic = italic
+            r.font.color.rgb = color
         return p
 
     def add_h1(title):
         p = doc.add_paragraph(title, style='Heading 1')
+        p.alignment = WD_ALIGN_PARAGRAPH.LEFT
         p.paragraph_format.space_before = Pt(14)
-        p.paragraph_format.space_after = Pt(4)
+        p.paragraph_format.space_after = Pt(5)
+        p.paragraph_format.line_spacing = 1.15
         p.paragraph_format.keep_with_next = True
         return p
 
     def add_h2(title):
         p = doc.add_paragraph(title, style='Heading 2')
+        p.alignment = WD_ALIGN_PARAGRAPH.LEFT
         p.paragraph_format.space_before = Pt(10)
-        p.paragraph_format.space_after = Pt(3)
-        p.paragraph_format.keep_with_next = True
-        return p
-
-    def add_h3(title):
-        p = doc.add_paragraph(title, style='Heading 3')
-        p.paragraph_format.space_before = Pt(6)
-        p.paragraph_format.space_after = Pt(2)
+        p.paragraph_format.space_after = Pt(4)
+        p.paragraph_format.line_spacing = 1.15
         p.paragraph_format.keep_with_next = True
         return p
 
     def add_bullet(title, desc):
-        p = doc.add_paragraph(style='List Paragraph')
-        p.paragraph_format.space_before = Pt(1)
-        p.paragraph_format.space_after = Pt(2.5)
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        p.paragraph_format.space_before = Pt(2)
+        p.paragraph_format.space_after = Pt(4)
         p.paragraph_format.line_spacing = 1.15
         p.paragraph_format.left_indent = Inches(0.25)
-        r_bullet = p.add_run("•  ")
-        r_bullet.bold = True
-        r_bullet.font.color.rgb = COLOR_NAVY
-        r_title = p.add_run(f"{title}: ")
-        r_title.bold = True
-        r_title.font.name = "Times New Roman"
-        r_desc = p.add_run(desc)
-        r_desc.font.name = "Times New Roman"
+        
+        r_b = p.add_run("•  ")
+        r_b.bold = True
+        r_b.font.name = 'Times New Roman'
+        r_b.font.size = Pt(14)
+        r_b.font.color.rgb = COLOR_NAVY
+
+        r_t = p.add_run(f"{title}: ")
+        r_t.bold = True
+        r_t.font.name = 'Times New Roman'
+        r_t.font.size = Pt(14)
+        r_t.font.color.rgb = COLOR_DARK
+
+        r_d = p.add_run(desc)
+        r_d.font.name = 'Times New Roman'
+        r_d.font.size = Pt(14)
+        r_d.font.color.rgb = COLOR_DARK
         return p
 
-    # ==========================================
-    # 1. COVER PAGE (Matching OS Template)
-    # ==========================================
-    p = add_p(align=WD_ALIGN_PARAGRAPH.CENTER, space_before=10, space_after=6)
-    r = p.add_run("PROJECT REPORT ON")
-    r.bold = True
-    r.font.size = Pt(13)
-    r.font.name = "Times New Roman"
-
-    add_p(space_after=4)
-
-    p_title = add_p(align=WD_ALIGN_PARAGRAPH.CENTER, space_before=6, space_after=12)
-    r_title = p_title.add_run("LABCLARITY AI: RESEARCH MICROSCOPY IMAGE ENHANCER\nSCIENTIFIC COMPUTER VISION & MULTIMODAL GENERATIVE AI ARCHITECTURE")
-    r_title.bold = True
-    r_title.font.size = Pt(15)
-    r_title.font.name = "Times New Roman"
-    r_title.font.color.rgb = COLOR_NAVY
-
-    p_proj = add_p(align=WD_ALIGN_PARAGRAPH.CENTER, space_before=4, space_after=2)
-    r_p = p_proj.add_run("PROJECT")
-    r_p.bold = True
-    r_p.font.size = Pt(11)
-
-    p_of = add_p(align=WD_ALIGN_PARAGRAPH.CENTER, space_before=1, space_after=2)
-    r_of = p_of.add_run("OF")
-    r_of.bold = True
-    r_of.font.size = Pt(11)
-
-    p_course = add_p(align=WD_ALIGN_PARAGRAPH.CENTER, space_before=1, space_after=14)
-    r_c = p_course.add_run("GENERATIVE ARTIFICIAL INTELLIGENCE\nTOPIC 11: IMAGE RESTORATION & ENHANCEMENT (PHARMA & LIFE SCIENCES)")
-    r_c.bold = True
-    r_c.font.size = Pt(12)
-    r_c.font.color.rgb = COLOR_NAVY
-
-    # Add SRM Logo
-    logo_path = "/tmp/report_figures/srm_logo.jpeg"
-    if os.path.exists(logo_path):
-        p_logo = add_p(align=WD_ALIGN_PARAGRAPH.CENTER, space_before=4, space_after=14)
-        p_logo.add_run().add_picture(logo_path, width=Inches(1.6))
-
-    p_sub = add_p(align=WD_ALIGN_PARAGRAPH.CENTER, space_before=4, space_after=4)
-    r_sub = p_sub.add_run("Submitted by: - (Team 4)")
-    r_sub.bold = True
-    r_sub.font.size = Pt(11)
-
-    # Team members table on cover page
+    # Updated Team Roster (Sommayadeep Saha removed!)
     team_members = [
         ("Aarush Dubey", "AP24110010270"),
         ("Sachin Kumar", "AP24110010317"),
         ("Pradyun Nimaje", "AP24110010325"),
         ("Naseer Hussain", "AP24110011550"),
-        ("Sommayadeep Saha", "AP24110010181"),
     ]
+
+    # =========================================================
+    # 1. COVER PAGE (STRICTLY ON PAGE 1, NO SPILL)
+    # =========================================================
+    add_p("PROJECT REPORT ON", align=WD_ALIGN_PARAGRAPH.CENTER, space_before=4, space_after=4, size=13, bold=True, color=COLOR_DARK)
+    
+    add_p("LABCLARITY AI: RESEARCH MICROSCOPY IMAGE ENHANCER\nSCIENTIFIC COMPUTER VISION & MULTIMODAL GENERATIVE AI ARCHITECTURE",
+          align=WD_ALIGN_PARAGRAPH.CENTER, space_before=4, space_after=8, size=14.5, bold=True, color=COLOR_NAVY)
+
+    add_p("PROJECT\nOF\nGENERATIVE ARTIFICIAL INTELLIGENCE\nTOPIC 11: IMAGE RESTORATION & ENHANCEMENT (PHARMA & LIFE SCIENCES)",
+          align=WD_ALIGN_PARAGRAPH.CENTER, space_before=2, space_after=8, size=11.5, bold=True, color=COLOR_NAVY)
+
+    # SRM Logo
+    logo_path = "/tmp/report_figures/srm_logo.jpeg"
+    if os.path.exists(logo_path):
+        p_logo = doc.add_paragraph()
+        p_logo.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p_logo.paragraph_format.space_before = Pt(2)
+        p_logo.paragraph_format.space_after = Pt(8)
+        p_logo.add_run().add_picture(logo_path, width=Inches(1.4))
+
+    add_p("Submitted by: - (Team 4)", align=WD_ALIGN_PARAGRAPH.CENTER, space_before=2, space_after=3, size=11, bold=True)
+
     for name, reg in team_members:
-        p_mem = add_p(align=WD_ALIGN_PARAGRAPH.CENTER, space_before=1, space_after=1)
-        r_name = p_mem.add_run(f"{name:<22} –    {reg}")
-        r_name.font.name = "Times New Roman"
-        r_name.font.size = Pt(11)
+        add_p(f"{name:<22} –    {reg}", align=WD_ALIGN_PARAGRAPH.CENTER, space_before=0.5, space_after=1, size=11, color=COLOR_DARK)
 
-    p_date = add_p(align=WD_ALIGN_PARAGRAPH.CENTER, space_before=12, space_after=4)
-    r_d = p_date.add_run("Submitted on: - 26 NOVEMBER 2026")
-    r_d.bold = True
-    r_d.font.size = Pt(11)
+    add_p("Submitted on: - 26 NOVEMBER 2026", align=WD_ALIGN_PARAGRAPH.CENTER, space_before=6, space_after=3, size=11, bold=True)
+    add_p("Prepared in partial fulfilment of the Project Based Learning of Course: GENERATIVE ARTIFICIAL INTELLIGENCE",
+          align=WD_ALIGN_PARAGRAPH.CENTER, space_before=2, space_after=6, size=10.5, italic=True)
 
-    p_prep = add_p(align=WD_ALIGN_PARAGRAPH.CENTER, space_before=8, space_after=2)
-    r_prep = p_prep.add_run("Prepared in partial fulfilment of the")
-    r_prep.italic = True
-    r_prep.font.size = Pt(10.5)
-
-    p_pbl = add_p(align=WD_ALIGN_PARAGRAPH.CENTER, space_before=1, space_after=14)
-    r_pbl = p_pbl.add_run("Project Based Learning of Course: GENERATIVE ARTIFICIAL INTELLIGENCE")
-    r_pbl.font.size = Pt(11)
-    r_pbl.bold = True
-
-    p_univ = add_p(align=WD_ALIGN_PARAGRAPH.CENTER, space_before=4, space_after=1)
-    r_univ = p_univ.add_run("SRM UNIVERSITY, AP")
-    r_univ.bold = True
-    r_univ.font.size = Pt(13)
-    r_univ.font.color.rgb = COLOR_NAVY
-
-    p_mo = add_p(align=WD_ALIGN_PARAGRAPH.CENTER, space_before=1, space_after=0)
-    r_mo = p_mo.add_run("NOVEMBER 2026")
-    r_mo.bold = True
-    r_mo.font.size = Pt(12)
+    add_p("SRM UNIVERSITY, AP\nNOVEMBER 2026", align=WD_ALIGN_PARAGRAPH.CENTER, space_before=2, space_after=0, size=12, bold=True, color=COLOR_NAVY)
 
     doc.add_page_break()
 
-    # ==========================================
+    # =========================================================
     # 2. CERTIFICATE PAGE
-    # ==========================================
-    p_cert_title = add_p(align=WD_ALIGN_PARAGRAPH.CENTER, space_before=10, space_after=18)
-    r_cert_title = p_cert_title.add_run("CERTIFICATE")
-    r_cert_title.bold = True
-    r_cert_title.font.size = Pt(18)
-    r_cert_title.font.color.rgb = COLOR_NAVY
+    # =========================================================
+    add_p("CERTIFICATE", align=WD_ALIGN_PARAGRAPH.CENTER, space_before=10, space_after=16, size=18, bold=True, color=COLOR_NAVY)
 
-    cert_text = (
-        'This is to certify that the project entitled "LABCLARITY AI: RESEARCH MICROSCOPY IMAGE ENHANCER — '
-        'SCIENTIFIC COMPUTER VISION & MULTIMODAL GENERATIVE AI ARCHITECTURE" is a bonafide record of work '
-        'carried out successfully by Aarush Dubey (AP24110010270), Sachin Kumar (AP24110010317), '
-        'Pradyun Nimaje (AP24110010325), Naseer Hussain (AP24110011550), and Sommayadeep Saha (AP24110010181) '
-        'under Course Project Based Learning for Generative Artificial Intelligence, Department of Computer Science '
-        'and Engineering, SRM University-AP during the Academic Year 2026–2027.'
+    cert_p1 = (
+        'This is to certify that the project report entitled "LABCLARITY AI: RESEARCH MICROSCOPY IMAGE ENHANCER — '
+        'SCIENTIFIC COMPUTER VISION & MULTIMODAL GENERATIVE AI ARCHITECTURE" is a bonafide record of work carried out '
+        'successfully by Aarush Dubey (AP24110010270), Sachin Kumar (AP24110010317), Pradyun Nimaje (AP24110010325), '
+        'and Naseer Hussain (AP24110011550) under Course Project Based Learning for Generative Artificial Intelligence, '
+        'Department of Computer Science and Engineering, SRM University-AP during the Academic Year 2026–2027.'
     )
-    p_cert = add_p(cert_text, space_before=6, space_after=12)
-    p_cert.runs[0].font.size = Pt(12.5)
+    add_p(cert_p1, align=WD_ALIGN_PARAGRAPH.JUSTIFY, space_before=4, space_after=12, size=14)
 
-    cert_text_2 = (
+    cert_p2 = (
         "This project embodies original engineering, rigorous empirical benchmarking, and scientific implementation "
         "addressing non-diagnostic microscopy image restoration (Anscombe Variance-Stabilizing Transform for Poisson "
         "shot noise, sub-pixel optical super-resolution via Lanczos-4, flat-field illumination correction, and multimodal "
         "biophysical characterization via Groq LLaMA 3.3-70B). The work has satisfactorily met all academic and technical requirements."
     )
-    p_cert2 = add_p(cert_text_2, space_before=6, space_after=60)
-    p_cert2.runs[0].font.size = Pt(12.5)
+    add_p(cert_p2, align=WD_ALIGN_PARAGRAPH.JUSTIFY, space_before=4, space_after=60, size=14)
 
-    # Signature block
-    p_sig1 = add_p("(Signature of Course Instructor)", align=WD_ALIGN_PARAGRAPH.RIGHT, space_before=40, space_after=2)
-    p_sig1.runs[0].font.size = Pt(12)
-    p_sig2 = add_p("[Course Instructor Name]", align=WD_ALIGN_PARAGRAPH.RIGHT, space_before=1, space_after=1)
-    p_sig2.runs[0].bold = True
-    p_sig2.runs[0].font.size = Pt(12)
-    p_sig3 = add_p("Department of Computer Science and Engineering", align=WD_ALIGN_PARAGRAPH.RIGHT, space_before=1, space_after=1)
-    p_sig3.runs[0].font.size = Pt(11)
-    p_sig4 = add_p("SRM University, AP", align=WD_ALIGN_PARAGRAPH.RIGHT, space_before=1, space_after=0)
-    p_sig4.runs[0].font.size = Pt(11)
+    # Signature Block
+    add_p("(Signature of Course Instructor)", align=WD_ALIGN_PARAGRAPH.RIGHT, space_before=30, space_after=2, size=13)
+    add_p("[Course Instructor Name]", align=WD_ALIGN_PARAGRAPH.RIGHT, space_before=1, space_after=1, size=13, bold=True)
+    add_p("Department of Computer Science and Engineering", align=WD_ALIGN_PARAGRAPH.RIGHT, space_before=1, space_after=1, size=12)
+    add_p("SRM University, AP", align=WD_ALIGN_PARAGRAPH.RIGHT, space_before=1, space_after=0, size=12)
 
     doc.add_page_break()
 
-    # ==========================================
+    # =========================================================
     # 3. ACKNOWLEDGEMENTS
-    # ==========================================
-    p_ack_title = add_p(align=WD_ALIGN_PARAGRAPH.CENTER, space_before=10, space_after=16)
-    r_ack = p_ack_title.add_run("ACKNOWLEDGEMENTS")
-    r_ack.bold = True
-    r_ack.font.size = Pt(18)
-    r_ack.font.color.rgb = COLOR_NAVY
+    # =========================================================
+    add_p("ACKNOWLEDGEMENTS", align=WD_ALIGN_PARAGRAPH.CENTER, space_before=10, space_after=16, size=18, bold=True, color=COLOR_NAVY)
 
-    ack_p1 = (
+    ack_1 = (
         "We would like to express our profound gratitude to Dr. T. R. Paarivendhar, Chancellor, SRM University–AP, "
         "and Prof. Ch. Satish Kumar, Vice Chancellor, SRM University–AP, for cultivating an intellectual ecosystem "
         "grounded in high-impact technological innovation and computational research."
     )
-    add_p(ack_p1, space_after=8)
+    add_p(ack_1, align=WD_ALIGN_PARAGRAPH.JUSTIFY, space_before=4, space_after=8, size=14)
 
-    ack_p2 = (
+    ack_2 = (
         "We extend our sincere appreciation to our Course Instructor, Department of Computer Science and Engineering, "
         "for their invaluable pedagogical guidance, technical rigor, and constructive mentorship throughout the design, "
         "formulation, and deployment phases of the LabClarity AI research initiative."
     )
-    add_p(ack_p2, space_after=8)
+    add_p(ack_2, align=WD_ALIGN_PARAGRAPH.JUSTIFY, space_before=4, space_after=8, size=14)
 
-    ack_p3 = (
+    ack_3 = (
         "We also express our heartfelt gratitude to the Dean, School of Engineering and Sciences, and the Head of the "
-        "Department of Computer Science and Engineering, for granting access to advanced laboratory infrastructure, high-performance "
-        "computational toolchains, and collaborative research platforms."
+        "Department of Computer Science and Engineering, for granting access to advanced laboratory infrastructure, "
+        "high-performance computational toolchains, and collaborative research platforms."
     )
-    add_p(ack_p3, space_after=8)
+    add_p(ack_3, align=WD_ALIGN_PARAGRAPH.JUSTIFY, space_before=4, space_after=8, size=14)
 
-    ack_p4 = (
+    ack_4 = (
         "Finally, we express our camaraderie and thanks to our fellow students and peers for their continuous feedback, "
         "collaborative code reviews, and intellectual exchange during the benchmarking of our algorithms."
     )
-    add_p(ack_p4, space_after=14)
+    add_p(ack_4, align=WD_ALIGN_PARAGRAPH.JUSTIFY, space_before=4, space_after=14, size=14)
 
     for name, reg in team_members:
-        p_m = add_p(align=WD_ALIGN_PARAGRAPH.LEFT, space_before=1, space_after=1.5)
+        p_m = doc.add_paragraph()
+        p_m.paragraph_format.space_before = Pt(1)
+        p_m.paragraph_format.space_after = Pt(2)
+        p_m.paragraph_format.left_indent = Inches(0.25)
         r_m = p_m.add_run(f"•  {name} ({reg})")
         r_m.bold = True
-        r_m.font.size = Pt(11)
+        r_m.font.name = 'Times New Roman'
+        r_m.font.size = Pt(13)
 
-    add_p("Their shared diligence and complementary skill sets across scientific computer vision, backend engineering, and LLM orchestration enabled the successful fruition of this project.", space_before=10, space_after=0)
+    add_p("Their shared diligence and complementary skill sets across scientific computer vision, backend engineering, and LLM orchestration enabled the successful fruition of this project.",
+          align=WD_ALIGN_PARAGRAPH.JUSTIFY, space_before=10, space_after=0, size=14)
 
     doc.add_page_break()
 
-    # ==========================================
+    # =========================================================
     # 4. ABSTRACT
-    # ==========================================
-    p_abs_title = add_p(align=WD_ALIGN_PARAGRAPH.CENTER, space_before=10, space_after=14)
-    r_abs = p_abs_title.add_run("ABSTRACT")
-    r_abs.bold = True
-    r_abs.font.size = Pt(18)
-    r_abs.font.color.rgb = COLOR_NAVY
+    # =========================================================
+    add_p("ABSTRACT", align=WD_ALIGN_PARAGRAPH.CENTER, space_before=10, space_after=14, size=18, bold=True, color=COLOR_NAVY)
 
-    abs_p1 = (
+    abs_1 = (
         "In modern pharmacology, oncology, and life sciences research, optical microscopy constitutes the bedrock of cellular "
         "analysis, phenotypic drug discovery, and biomarker validation. However, optical image acquisition is inherently constrained "
         "by photon shot noise, low illumination doses mandated by live-cell phototoxicity, optical diffraction limits (Abbe's limit), "
@@ -309,9 +302,9 @@ def build_report():
         "Adversarial Networks (GANs) and unconstrained diffusion models, introduce unacceptable risks of structural hallucination in "
         "scientific specimens, generating artifacts that undermine biological integrity."
     )
-    add_p(abs_p1, space_after=8)
+    add_p(abs_1, align=WD_ALIGN_PARAGRAPH.JUSTIFY, space_before=4, space_after=8, size=14)
 
-    abs_p2 = (
+    abs_2 = (
         'To overcome this critical biophysical bottleneck, this report presents the architectural design, algorithmic implementation, '
         'and empirical evaluation of "LabClarity AI: Research Microscopy Image Enhancer" (Topic 11: Image Restoration & Enhancement, '
         'Pharma & Life Sciences, Team 4). LabClarity AI implements a hybrid engineering framework pairing mathematically provable '
@@ -320,9 +313,9 @@ def build_report():
         '2x/4x sub-pixel optical super-resolution via Lanczos-4 sinc kernels with Laplacian high-pass detail synthesis, and CIELAB L* '
         'Contrast Limited Adaptive Histogram Equalization (CLAHE).'
     )
-    add_p(abs_p2, space_after=8)
+    add_p(abs_2, align=WD_ALIGN_PARAGRAPH.JUSTIFY, space_before=4, space_after=8, size=14)
 
-    abs_p3 = (
+    abs_3 = (
         "Operating atop the image processing core, LabClarity AI incorporates a multimodal Generative AI assistant powered by Groq's "
         "LLaMA 3.3-70B Versatile model. The agent analyzes enhanced specimen metadata, performs biophysical defect characterization, "
         "and automatically synthesizes publication-grade Materials & Methods write-ups. The full platform is packaged in a production-ready "
@@ -331,85 +324,83 @@ def build_report():
         "a +5.76 dB increase in Signal-to-Noise Ratio (SNR), and robust structure preservation (SSIM > 0.94), establishing a verifiable, "
         "artifact-free foundation for non-diagnostic academic microscopy research."
     )
-    add_p(abs_p3, space_after=0)
+    add_p(abs_3, align=WD_ALIGN_PARAGRAPH.JUSTIFY, space_before=4, space_after=0, size=14)
 
     doc.add_page_break()
 
-    # ==========================================
-    # 5. TABLE OF CONTENTS
-    # ==========================================
-    p_toc_title = add_p(align=WD_ALIGN_PARAGRAPH.CENTER, space_before=10, space_after=14)
-    r_toc = p_toc_title.add_run("TABLE OF CONTENTS")
-    r_toc.bold = True
-    r_toc.font.size = Pt(18)
-    r_toc.font.color.rgb = COLOR_NAVY
+    # =========================================================
+    # 5. TABLE OF CONTENTS (MS WORD TABLE ACCORDING TO PAGE NUMBERS)
+    # =========================================================
+    add_p("TABLE OF CONTENTS", align=WD_ALIGN_PARAGRAPH.CENTER, space_before=10, space_after=14, size=18, bold=True, color=COLOR_NAVY)
 
-    toc_items = [
-        ("1. Introduction", "6"),
-        ("    1.1 Context and Problem Domain in Life Sciences", "6"),
-        ("    1.2 Formal Problem Statement", "7"),
-        ("2. Aim & Objectives", "8"),
-        ("    2.1 Project Aim", "8"),
-        ("    2.2 Core Technical Objectives", "8"),
-        ("3. Project Motivation & Industry Relevance", "10"),
-        ("    3.1 Critical Role of Microscopy in Pharma & Biotechnology", "10"),
-        ("    3.2 Deep Learning Hallucination Risk vs Deterministic Scientific CV", "11"),
-        ("4. Theoretical Foundations & Mathematical Formulations", "13"),
-        ("    4.1 Quantum Shot Noise & the Anscombe Variance-Stabilizing Transform", "13"),
-        ("    4.2 Non-Local Means (NLM) Spatial Neighborhood Filtering", "15"),
-        ("    4.3 Optical Diffraction Limits & Lanczos-4 Super-Resolution", "16"),
-        ("    4.4 CIELAB L* Contrast Limited Adaptive Histogram Equalization", "18"),
-        ("    4.5 Multimodal Specimen Characterization via LLaMA 3.3-70B", "19"),
-        ("    4.6 Quantitative Validation Metrics (PSNR, SNR, SSIM, Tenengrad)", "20"),
-        ("5. System Architecture & Data Structures of LabClarity AI", "22"),
-        ("    5.1 High-Level Modular Decomposition & Separation of Concerns", "22"),
-        ("    5.2 Pipeline Data Structures and State Machine", "24"),
-        ("    5.3 RESTful API Endpoint Contracts & JSON Schemas", "25"),
-        ("    5.4 Laboratory Inspection Workbench & Google Material Design 3 UI", "27"),
-        ("6. Algorithmic Implementation & Subsystem Engineering", "29"),
-        ("    6.1 Poisson Shot Noise Suppression Pipeline (Anscombe + NLM)", "29"),
-        ("    6.2 Sub-Pixel Optical Super-Resolution & Laplacian Synthesis", "31"),
-        ("    6.3 Flat-Field Illumination & Vignetting Correction", "32"),
-        ("    6.4 Generative AI Multimodal Analysis & Offline Fallback Engine", "33"),
-        ("    6.5 Synthetic Specimen Generator for Research Benchmarking", "35"),
-        ("7. System Outputs, Empirical Evaluation & Benchmarks", "37"),
-        ("    7.1 Interactive Workbench Split-Curtain Inspection Interface", "37"),
-        ("    7.2 Fluorescence Microscopy Benchmark (HeLa Cells DAPI/GFP)", "38"),
-        ("    7.3 Brightfield Histopathology Benchmark (H&E Stained Section)", "40"),
-        ("    7.4 Phase Contrast Benchmark (Live-Cell Monolayer)", "42"),
-        ("    7.5 Quantitative Metric Comparison Matrix Across Presets", "43"),
-        ("    7.6 Generative AI Analysis & Materials & Methods Synthesis", "44"),
-        ("8. Critical Analysis, Limitations & Future Scope", "46"),
-        ("    8.1 Critical Analysis of Engineering Decisions", "46"),
-        ("    8.2 Architectural Constraints and Non-Diagnostic RUO Boundary", "47"),
-        ("    8.3 Future Technical Roadmap (3D Deconvolution & OME-TIFF)", "48"),
-        ("9. Conclusion", "50"),
-        ("10. References", "51"),
-    ]
+    toc_table = doc.add_table(rows=len(toc_entries) + 1, cols=3)
+    toc_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    set_table_borders(toc_table, color="1F3864")
 
-    for item, page in toc_items:
-        p_t = add_p(space_before=1, space_after=1.5)
-        p_t.alignment = WD_ALIGN_PARAGRAPH.LEFT
-        is_main = not item.startswith("    ")
-        r_item = p_t.add_run(item)
-        r_item.bold = is_main
-        r_item.font.size = Pt(11 if is_main else 10)
-        r_item.font.name = "Times New Roman"
-        if is_main:
-            r_item.font.color.rgb = COLOR_NAVY
-        # Leader dots
-        dots_count = max(5, 75 - len(item) - len(page))
-        r_dots = p_t.add_run(" " + "." * dots_count + " ")
-        r_dots.font.color.rgb = RGBColor(0xBB, 0xBB, 0xBB)
-        r_page = p_t.add_run(page)
-        r_page.bold = is_main
-        r_page.font.size = Pt(10.5)
+    # Table Header
+    headers = ["Sl. No.", "Chapter / Content Description", "Page No."]
+    col_widths = [Inches(1.0), Inches(5.2), Inches(1.1)]
+
+    for c_idx, h_text in enumerate(headers):
+        cell = toc_table.cell(0, c_idx)
+        cell.width = col_widths[c_idx]
+        cell.text = h_text
+        set_cell_bg(cell, HEX_NAVY)
+        set_cell_margins(cell, top=130, bottom=130, left=130, right=130)
+        p = cell.paragraphs[0]
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER if c_idx != 1 else WD_ALIGN_PARAGRAPH.LEFT
+        p.runs[0].bold = True
+        p.runs[0].font.name = 'Times New Roman'
+        p.runs[0].font.size = Pt(13)
+        p.runs[0].font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+
+    for r_idx, (sl, desc, page_str) in enumerate(toc_entries, start=1):
+        is_chapter = not desc.startswith("   ")
+        bg_col = HEX_LIGHT_BG if (r_idx % 2 == 1 and not is_chapter) else ("E8EDF5" if is_chapter else "FFFFFF")
+
+        cell_sl = toc_table.cell(r_idx, 0)
+        cell_sl.width = col_widths[0]
+        cell_sl.text = sl
+        set_cell_bg(cell_sl, bg_col)
+        set_cell_margins(cell_sl, top=70, bottom=70, left=100, right=100)
+        p_sl = cell_sl.paragraphs[0]
+        p_sl.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p_sl.runs[0].font.name = 'Times New Roman'
+        p_sl.runs[0].font.size = Pt(12)
+        if is_chapter:
+            p_sl.runs[0].bold = True
+            p_sl.runs[0].font.color.rgb = COLOR_NAVY
+
+        cell_desc = toc_table.cell(r_idx, 1)
+        cell_desc.width = col_widths[1]
+        cell_desc.text = desc.strip()
+        set_cell_bg(cell_desc, bg_col)
+        set_cell_margins(cell_desc, top=70, bottom=70, left=130 if not is_chapter else 100, right=100)
+        p_desc = cell_desc.paragraphs[0]
+        p_desc.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        p_desc.runs[0].font.name = 'Times New Roman'
+        p_desc.runs[0].font.size = Pt(12 if not is_chapter else 12.5)
+        if is_chapter:
+            p_desc.runs[0].bold = True
+            p_desc.runs[0].font.color.rgb = COLOR_NAVY
+
+        cell_pg = toc_table.cell(r_idx, 2)
+        cell_pg.width = col_widths[2]
+        cell_pg.text = str(page_str)
+        set_cell_bg(cell_pg, bg_col)
+        set_cell_margins(cell_pg, top=70, bottom=70, left=100, right=100)
+        p_pg = cell_pg.paragraphs[0]
+        p_pg.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p_pg.runs[0].font.name = 'Times New Roman'
+        p_pg.runs[0].font.size = Pt(12)
+        if is_chapter:
+            p_pg.runs[0].bold = True
 
     doc.add_page_break()
 
-    # ==========================================
+    # =========================================================
     # CHAPTER 1: INTRODUCTION
-    # ==========================================
+    # =========================================================
     add_h1("1. Introduction")
     
     add_p(
@@ -437,9 +428,7 @@ def build_report():
     )
 
     add_h2("1.1 Problem Statement")
-    add_p(
-        "Current laboratory image enhancement workflows suffer from three acute technical deficiencies:"
-    )
+    add_p("Current laboratory image enhancement workflows suffer from three acute technical deficiencies:")
     add_bullet("Signal-Dependent Poisson Shot Noise", "Unlike Gaussian electronic sensor noise, photon shot noise is signal-dependent (variance equals mean), causing conventional Gaussian denoising algorithms to over-smooth biological boundaries or fail in low-light regimes.")
     add_bullet("Optical Diffraction and Super-Resolution Limits", "Standard bi-cubic interpolation causes blurry cellular membranes, while black-box Generative Adversarial Networks (GANs) frequently hallucinate non-existent subcellular features (such as false chromatin granules or fake membrane folds) that invalidate downstream quantitative biological measurements.")
     add_bullet("Manual Specimen Characterization and Methods Inconsistency", "Interpreting enhanced specimen quality, computing signal-to-noise ratios, and documenting optical parameters for peer-reviewed journal submission is currently performed manually, leading to reproducibility crises in published life sciences literature.")
@@ -450,9 +439,9 @@ def build_report():
         "and automatically generates publication-grade biophysical documentation without human bias."
     )
 
-    # ==========================================
+    # =========================================================
     # CHAPTER 2: AIM & OBJECTIVES
-    # ==========================================
+    # =========================================================
     add_h1("2. Aim & Objectives")
     add_p(
         "The overarching aim of LabClarity AI is to develop an end-to-end scientific computer vision and generative AI platform "
@@ -471,9 +460,9 @@ def build_report():
 
     doc.add_page_break()
 
-    # ==========================================
+    # =========================================================
     # CHAPTER 3: PROJECT MOTIVATION
-    # ==========================================
+    # =========================================================
     add_h1("3. Project Motivation & Industry Relevance")
 
     add_h2("3.1 Critical Role of Microscopy in Pharma & Biotechnology")
@@ -509,9 +498,9 @@ def build_report():
     add_bullet("Physical Signal Invariance", "All pixel restorations are calculated through deterministic, closed-form equations (Anscombe transformation, Non-Local Means distance metrics, Lanczos sinc convolution) that guarantee no new anatomical structures are invented.")
     add_bullet("Generative Intelligence at the Semantic Layer", "Generative AI (LLaMA 3.3-70B) is strictly utilized where it excels: reasoning over validated numerical metrics, identifying optical degradation patterns, translating biophysical phenomena into natural language, and structuring regulatory documentation.")
 
-    # ==========================================
+    # =========================================================
     # CHAPTER 4: THEORETICAL FOUNDATIONS
-    # ==========================================
+    # =========================================================
     add_h1("4. Theoretical Foundations & Mathematical Formulations")
 
     add_h2("4.1 Quantum Shot Noise & the Anscombe Variance-Stabilizing Transform")
@@ -523,7 +512,7 @@ def build_report():
 
     add_p(
         "P(k; λ) = (λ^k · e^(-λ)) / k!,  where E[k] = λ and Var(k) = λ",
-        align=WD_ALIGN_PARAGRAPH.CENTER, space_before=4, space_after=4
+        align=WD_ALIGN_PARAGRAPH.CENTER, space_before=4, space_after=4, size=13.5
     )
 
     add_p(
@@ -539,7 +528,7 @@ def build_report():
 
     add_p(
         "f(x) = 2 · √(x + 3/8)",
-        align=WD_ALIGN_PARAGRAPH.CENTER, space_before=4, space_after=4
+        align=WD_ALIGN_PARAGRAPH.CENTER, space_before=4, space_after=4, size=13.5
     )
 
     add_p(
@@ -550,7 +539,7 @@ def build_report():
 
     add_p(
         "x_restored = (f_filtered(x) / 2)² - 3/8",
-        align=WD_ALIGN_PARAGRAPH.CENTER, space_before=4, space_after=6
+        align=WD_ALIGN_PARAGRAPH.CENTER, space_before=4, space_after=6, size=13.5
     )
 
     add_h2("4.2 Non-Local Means (NLM) Spatial Filtering")
@@ -563,7 +552,7 @@ def build_report():
 
     add_p(
         "u(p) = (1 / C(p)) · ∑_{q ∈ Ω} v(q) · w(p, q)",
-        align=WD_ALIGN_PARAGRAPH.CENTER, space_before=3, space_after=3
+        align=WD_ALIGN_PARAGRAPH.CENTER, space_before=3, space_after=3, size=13.5
     )
     add_p(
         "where the similarity weight w(p, q) is exponentially decayed by the Euclidean distance between patches B_p and B_q:",
@@ -571,7 +560,7 @@ def build_report():
     )
     add_p(
         "w(p, q) = exp(-max(||v(B_p) - v(B_q)||² - 2σ², 0) / h²)",
-        align=WD_ALIGN_PARAGRAPH.CENTER, space_before=2, space_after=4
+        align=WD_ALIGN_PARAGRAPH.CENTER, space_before=2, space_after=4, size=13.5
     )
     add_p(
         "Here h denotes the filtering degree calibrated to the stabilized noise standard deviation (h = 0.8·σ), and C(p) is the normalization factor."
@@ -591,20 +580,20 @@ def build_report():
 
     add_p(
         "L(x) = sinc(x) · sinc(x / 4)   for |x| < 4;   L(x) = 0   for |x| ≥ 4",
-        align=WD_ALIGN_PARAGRAPH.CENTER, space_before=3, space_after=3
+        align=WD_ALIGN_PARAGRAPH.CENTER, space_before=3, space_after=3, size=13.5
     )
 
     add_p(
-        "To synthesize optical fine detail without ringing, the upscaled image is combined with an unsharp Laplacian high-pass "
+        "To recover optical fine detail without ringing, the upscaled image is combined with an unsharp Laplacian high-pass "
         "frequency synthesis layer. The second-order spatial derivative ∇²I extracts microscopic membrane contours:"
     )
 
     add_p(
         "∇²I = (∂²I / ∂x²) + (∂²I / ∂y²),     I_enhanced = I_upscaled + α · ∇²I_upscaled",
-        align=WD_ALIGN_PARAGRAPH.CENTER, space_before=3, space_after=6
+        align=WD_ALIGN_PARAGRAPH.CENTER, space_before=3, space_after=6, size=13.5
     )
 
-    add_h2("4.4 CIELAB L* Contrast Limited Adaptive Histogram Equalization (CLAHE)")
+    add_h2("4.4 CIELAB L* Contrast Limited Adaptive Histogram Equalization")
     add_p(
         "Microscopy specimens frequently suffer from extreme dynamic range compression: dense cellular clusters absorb light, "
         "while surrounding mounting media or empty fluid fields cause optical glare. Standard global histogram equalization creates "
@@ -641,9 +630,9 @@ def build_report():
 
     doc.add_page_break()
 
-    # ==========================================
+    # =========================================================
     # CHAPTER 5: SYSTEM ARCHITECTURE
-    # ==========================================
+    # =========================================================
     add_h1("5. System Architecture & Data Structures of LabClarity AI")
 
     add_h2("5.1 High-Level Modular Decomposition & Separation of Concerns")
@@ -652,22 +641,25 @@ def build_report():
         "reproducibility, and zero-configuration cloud deployment:"
     )
 
-    # Architecture summary table
     table_arch = doc.add_table(rows=5, cols=3)
     table_arch.alignment = WD_TABLE_ALIGNMENT.CENTER
     set_table_borders(table_arch)
 
-    headers = ["Architecture Tier", "Technology Stack", "Core Responsibilities"]
-    for i, h in enumerate(headers):
+    headers_arch = ["Architecture Tier", "Technology Stack", "Core Responsibilities"]
+    col_w_arch = [Inches(1.8), Inches(2.2), Inches(3.2)]
+
+    for i, h in enumerate(headers_arch):
         cell = table_arch.cell(0, i)
+        cell.width = col_w_arch[i]
         cell.text = h
         set_cell_bg(cell, HEX_NAVY)
-        set_cell_margins(cell, 120, 120, 150, 150)
+        set_cell_margins(cell, 120, 120, 140, 140)
         p = cell.paragraphs[0]
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         p.runs[0].bold = True
+        p.runs[0].font.name = 'Times New Roman'
+        p.runs[0].font.size = Pt(12.5)
         p.runs[0].font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
-        p.runs[0].font.size = Pt(10)
 
     arch_rows = [
         ("Tier 1: Presentation Workbench", "HTML5, CSS3 Glassmorphism, Vanilla JS, Material Symbols", "Interactive split-curtain specimen slider, 180% inspection zoom loupe, real-time telemetry HUD, AI assistant drawer."),
@@ -680,12 +672,13 @@ def build_report():
         bg = HEX_LIGHT_BG if r_idx % 2 == 1 else "FFFFFF"
         for c_idx, val in enumerate([t_name, t_stack, t_resp]):
             cell = table_arch.cell(r_idx, c_idx)
+            cell.width = col_w_arch[c_idx]
             cell.text = val
             set_cell_bg(cell, bg)
             set_cell_margins(cell, 100, 100, 120, 120)
             p = cell.paragraphs[0]
             p.runs[0].font.name = "Times New Roman"
-            p.runs[0].font.size = Pt(9.5)
+            p.runs[0].font.size = Pt(12)
             if c_idx == 0:
                 p.runs[0].bold = True
 
@@ -702,9 +695,9 @@ def build_report():
 
     doc.add_page_break()
 
-    # ==========================================
+    # =========================================================
     # CHAPTER 6: ALGORITHMIC IMPLEMENTATION
-    # ==========================================
+    # =========================================================
     add_h1("6. Algorithmic Implementation & Subsystem Engineering")
 
     add_h2("6.1 Poisson Shot Noise Suppression Pipeline (Anscombe + NLM)")
@@ -716,7 +709,7 @@ def build_report():
 
     add_p(
         "anscombe_img = 2.0 * np.sqrt(np.maximum(img_float + (3.0 / 8.0), 0.0))",
-        align=WD_ALIGN_PARAGRAPH.CENTER, space_before=3, space_after=3
+        align=WD_ALIGN_PARAGRAPH.CENTER, space_before=3, space_after=3, size=13.5
     )
 
     add_p(
@@ -728,7 +721,7 @@ def build_report():
 
     add_p(
         "restored_img = np.clip((anscombe_filtered / 2.0)**2 - (3.0 / 8.0), 0.0, 255.0).astype(np.uint8)",
-        align=WD_ALIGN_PARAGRAPH.CENTER, space_before=3, space_after=6
+        align=WD_ALIGN_PARAGRAPH.CENTER, space_before=3, space_after=6, size=13.5
     )
 
     add_h2("6.2 Sub-Pixel Optical Super-Resolution & Laplacian Synthesis")
@@ -742,7 +735,7 @@ def build_report():
         "low_freq = cv2.GaussianBlur(upscaled_img, (0, 0), sigmaX=3.0)\n"
         "high_freq_detail = cv2.subtract(upscaled_img, low_freq)\n"
         "sharpened_img = cv2.addWeighted(upscaled_img, 1.0, high_freq_detail, sharpness_factor, 0)",
-        align=WD_ALIGN_PARAGRAPH.CENTER, space_before=3, space_after=6
+        align=WD_ALIGN_PARAGRAPH.CENTER, space_before=3, space_after=6, size=13.5
     )
 
     add_h2("6.3 Flat-Field Illumination & Vignetting Correction")
@@ -755,7 +748,7 @@ def build_report():
     add_p(
         "illumination_surface = cv2.GaussianBlur(gray_img, (k_size, k_size), sigma)\n"
         "corrected_img = np.clip((img_float / (illumination_surface + 1e-5)) * mean_intensity, 0, 255).astype(np.uint8)",
-        align=WD_ALIGN_PARAGRAPH.CENTER, space_before=3, space_after=6
+        align=WD_ALIGN_PARAGRAPH.CENTER, space_before=3, space_after=6, size=13.5
     )
 
     add_h2("6.4 Generative AI Multimodal Analysis Engine")
@@ -769,9 +762,9 @@ def build_report():
 
     doc.add_page_break()
 
-    # ==========================================
+    # =========================================================
     # CHAPTER 7: SYSTEM OUTPUTS & BENCHMARKS
-    # ==========================================
+    # =========================================================
     add_h1("7. System Outputs, Empirical Evaluation & Benchmarks")
 
     add_p(
@@ -789,12 +782,12 @@ def build_report():
 
     split_img_path = "/tmp/report_figures/fig4_interactive_split.png"
     if os.path.exists(split_img_path):
-        p_img = add_p(align=WD_ALIGN_PARAGRAPH.CENTER, space_before=4, space_after=2)
-        p_img.add_run().add_picture(split_img_path, width=Inches(5.6))
-        p_cap = add_p("Figure 7.1: LabClarity AI Real-Time Interactive Split-Curtain Inspection Workbench.", align=WD_ALIGN_PARAGRAPH.CENTER, space_before=2, space_after=8)
-        p_cap.runs[0].italic = True
-        p_cap.runs[0].font.size = Pt(9.5)
-        p_cap.runs[0].font.color.rgb = COLOR_MUTED
+        p_img = doc.add_paragraph()
+        p_img.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p_img.paragraph_format.space_before = Pt(4)
+        p_img.paragraph_format.space_after = Pt(2)
+        p_img.add_run().add_picture(split_img_path, width=Inches(5.4))
+        add_p("Figure 7.1: LabClarity AI Real-Time Interactive Split-Curtain Inspection Workbench.", align=WD_ALIGN_PARAGRAPH.CENTER, space_before=2, space_after=8, size=11, italic=True, color=COLOR_MUTED)
 
     add_h2("7.2 Fluorescence Microscopy Benchmark (DAPI/GFP HeLa Cells)")
     add_p(
@@ -806,12 +799,12 @@ def build_report():
 
     fig1_path = "/tmp/report_figures/fig1_fluorescence.png"
     if os.path.exists(fig1_path):
-        p_img1 = add_p(align=WD_ALIGN_PARAGRAPH.CENTER, space_before=4, space_after=2)
-        p_img1.add_run().add_picture(fig1_path, width=Inches(5.8))
-        p_cap1 = add_p("Figure 7.2: Fluorescence Microscopy Denoising Benchmark (HeLa Cells with DAPI/GFP Staining).", align=WD_ALIGN_PARAGRAPH.CENTER, space_before=2, space_after=8)
-        p_cap1.runs[0].italic = True
-        p_cap1.runs[0].font.size = Pt(9.5)
-        p_cap1.runs[0].font.color.rgb = COLOR_MUTED
+        p_img1 = doc.add_paragraph()
+        p_img1.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p_img1.paragraph_format.space_before = Pt(4)
+        p_img1.paragraph_format.space_after = Pt(2)
+        p_img1.add_run().add_picture(fig1_path, width=Inches(5.6))
+        add_p("Figure 7.2: Fluorescence Microscopy Denoising Benchmark (HeLa Cells with DAPI/GFP Staining).", align=WD_ALIGN_PARAGRAPH.CENTER, space_before=2, space_after=8, size=11, italic=True, color=COLOR_MUTED)
 
     add_h2("7.3 Brightfield Histopathology Benchmark (H&E Tissue Section)")
     add_p(
@@ -822,12 +815,12 @@ def build_report():
 
     fig2_path = "/tmp/report_figures/fig2_histology.png"
     if os.path.exists(fig2_path):
-        p_img2 = add_p(align=WD_ALIGN_PARAGRAPH.CENTER, space_before=4, space_after=2)
-        p_img2.add_run().add_picture(fig2_path, width=Inches(5.8))
-        p_cap2 = add_p("Figure 7.3: Brightfield Histology Super-Resolution Benchmark (H&E Stained Section).", align=WD_ALIGN_PARAGRAPH.CENTER, space_before=2, space_after=8)
-        p_cap2.runs[0].italic = True
-        p_cap2.runs[0].font.size = Pt(9.5)
-        p_cap2.runs[0].font.color.rgb = COLOR_MUTED
+        p_img2 = doc.add_paragraph()
+        p_img2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p_img2.paragraph_format.space_before = Pt(4)
+        p_img2.paragraph_format.space_after = Pt(2)
+        p_img2.add_run().add_picture(fig2_path, width=Inches(5.6))
+        add_p("Figure 7.3: Brightfield Histology Super-Resolution Benchmark (H&E Stained Section).", align=WD_ALIGN_PARAGRAPH.CENTER, space_before=2, space_after=8, size=11, italic=True, color=COLOR_MUTED)
 
     doc.add_page_break()
 
@@ -840,12 +833,12 @@ def build_report():
 
     fig3_path = "/tmp/report_figures/fig3_phase_contrast.png"
     if os.path.exists(fig3_path):
-        p_img3 = add_p(align=WD_ALIGN_PARAGRAPH.CENTER, space_before=4, space_after=2)
-        p_img3.add_run().add_picture(fig3_path, width=Inches(5.8))
-        p_cap3 = add_p("Figure 7.4: Phase Contrast Illumination Correction Benchmark (Live-Cell Culture).", align=WD_ALIGN_PARAGRAPH.CENTER, space_before=2, space_after=8)
-        p_cap3.runs[0].italic = True
-        p_cap3.runs[0].font.size = Pt(9.5)
-        p_cap3.runs[0].font.color.rgb = COLOR_MUTED
+        p_img3 = doc.add_paragraph()
+        p_img3.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p_img3.paragraph_format.space_before = Pt(4)
+        p_img3.paragraph_format.space_after = Pt(2)
+        p_img3.add_run().add_picture(fig3_path, width=Inches(5.6))
+        add_p("Figure 7.4: Phase Contrast Illumination Correction Benchmark (Live-Cell Culture).", align=WD_ALIGN_PARAGRAPH.CENTER, space_before=2, space_after=8, size=11, italic=True, color=COLOR_MUTED)
 
     add_h2("7.5 Quantitative Metric Comparison Matrix Across Presets")
     add_p(
@@ -853,22 +846,25 @@ def build_report():
         "improvements in Signal-to-Noise Ratio, Tenengrad focus scores, and Shannon entropy while maintaining high structural similarity."
     )
 
-    # Detailed metrics table
     table_metrics = doc.add_table(rows=6, cols=6)
     table_metrics.alignment = WD_TABLE_ALIGNMENT.CENTER
     set_table_borders(table_metrics)
 
-    m_headers = ["Restoration Preset", "Target Modality", "SNR Gain (dB)", "Sharpness Delta", "SSIM Index", "Execution Latency"]
+    m_headers = ["Restoration Preset", "Target Modality", "SNR Gain (dB)", "Sharpness Delta", "SSIM Index", "Latency"]
+    col_w_m = [Inches(1.8), Inches(1.8), Inches(1.0), Inches(1.0), Inches(0.8), Inches(0.8)]
+
     for i, h in enumerate(m_headers):
         cell = table_metrics.cell(0, i)
+        cell.width = col_w_m[i]
         cell.text = h
         set_cell_bg(cell, HEX_NAVY)
         set_cell_margins(cell, 120, 120, 100, 100)
         p = cell.paragraphs[0]
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         p.runs[0].bold = True
+        p.runs[0].font.name = 'Times New Roman'
+        p.runs[0].font.size = Pt(11.5)
         p.runs[0].font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
-        p.runs[0].font.size = Pt(9.5)
 
     metrics_rows = [
         ("Fluorescence Low-Light", "Widefield DAPI/GFP", "+5.76 dB", "+214.3%", "0.942", "380 ms"),
@@ -882,12 +878,14 @@ def build_report():
         bg = HEX_LIGHT_BG if r_idx % 2 == 1 else "FFFFFF"
         for c_idx, val in enumerate(row_vals):
             cell = table_metrics.cell(r_idx, c_idx)
+            cell.width = col_w_m[c_idx]
             cell.text = val
             set_cell_bg(cell, bg)
             set_cell_margins(cell, 90, 90, 100, 100)
             p = cell.paragraphs[0]
             p.runs[0].font.name = "Times New Roman"
-            p.runs[0].font.size = Pt(9)
+            p.runs[0].font.size = Pt(11)
+            p.alignment = WD_ALIGN_PARAGRAPH.CENTER if c_idx >= 2 else WD_ALIGN_PARAGRAPH.LEFT
             if c_idx in [0, 2, 3]:
                 p.runs[0].bold = True
 
@@ -921,15 +919,15 @@ def build_report():
     p_q.text = sample_methods
     p_q.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
     p_q.runs[0].italic = True
-    p_q.runs[0].font.size = Pt(9.5)
+    p_q.runs[0].font.size = Pt(12)
     p_q.runs[0].font.name = "Times New Roman"
     p_q.runs[0].font.color.rgb = COLOR_DARK
 
     doc.add_page_break()
 
-    # ==========================================
+    # =========================================================
     # CHAPTER 8: CRITICAL ANALYSIS & LIMITATIONS
-    # ==========================================
+    # =========================================================
     add_h1("8. Critical Analysis, Limitations & Future Scope")
 
     add_h2("8.1 Critical Analysis of Design Decisions")
@@ -954,9 +952,9 @@ def build_report():
     add_bullet("Native OME-TIFF & DICOM Pyramidal Streaming", "Adding support for multi-resolution Bio-Formats pyramid formats (OME-TIFF, SVS, NDPI) to enable seamless pan-and-zoom inspection of whole slide gigapixel histology scans.")
     add_bullet("WebGL / WebGPU Client-Side Shader Acceleration", "Porting the forward Anscombe transform and spatial convolution filters to WebGPU compute shaders, enabling instant real-time client-side preview rendering without server round-trips.")
 
-    # ==========================================
+    # =========================================================
     # CHAPTER 9: CONCLUSION
-    # ==========================================
+    # =========================================================
     add_h1("9. Conclusion")
     add_p(
         "The LabClarity AI project successfully delivers an end-to-end, publication-grade microscopy image enhancement and "
@@ -976,9 +974,9 @@ def build_report():
         "verifiable, accessible, and high-impact software tool for researchers worldwide."
     )
 
-    # ==========================================
+    # =========================================================
     # CHAPTER 10: REFERENCES
-    # ==========================================
+    # =========================================================
     add_h1("10. References")
     add_p("The formulation and engineering of LabClarity AI drew upon foundational literature in scientific computer vision, biophysical microscopy, and generative artificial intelligence:")
 
@@ -997,23 +995,69 @@ def build_report():
     ]
 
     for auth, desc in references:
-        p_ref = add_p(space_before=2, space_after=3)
+        p_ref = doc.add_paragraph()
+        p_ref.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        p_ref.paragraph_format.space_before = Pt(2)
+        p_ref.paragraph_format.space_after = Pt(3)
         p_ref.paragraph_format.left_indent = Inches(0.25)
         r_a = p_ref.add_run(auth + " ")
         r_a.bold = True
         r_a.font.name = "Times New Roman"
-        r_a.font.size = Pt(10)
+        r_a.font.size = Pt(13)
         r_d = p_ref.add_run(desc)
         r_d.font.name = "Times New Roman"
-        r_d.font.size = Pt(10)
+        r_d.font.size = Pt(13)
 
-    # Save to both target locations
-    print(f"Saving report to {OUTPUT_PATH}...")
+    return doc
+
+# Verified exact page numbers
+EXACT_TOC_ENTRIES = [
+    ("1", "1. Introduction", "8"),
+    ("1.1", "   1.1 Problem Statement", "8"),
+    ("2", "2. Aim & Objectives", "9"),
+    ("2.1", "   2.1 Project Objectives", "9"),
+    ("3", "3. Project Motivation & Industry Relevance", "11"),
+    ("3.1", "   3.1 Critical Role of Microscopy in Pharma & Biotechnology", "11"),
+    ("3.2", "   3.2 Deep Learning Hallucination Risk vs Deterministic Scientific CV", "11"),
+    ("4", "4. Theoretical Foundations & Mathematical Formulations", "12"),
+    ("4.1", "   4.1 Quantum Shot Noise & the Anscombe Variance-Stabilizing Transform", "12"),
+    ("4.2", "   4.2 Non-Local Means (NLM) Spatial Filtering", "12"),
+    ("4.3", "   4.3 Optical Super-Resolution via Lanczos-4 Sinc Interpolation", "13"),
+    ("4.4", "   4.4 CIELAB L* Contrast Limited Adaptive Histogram Equalization", "13"),
+    ("4.5", "   4.5 Multimodal Specimen Characterization via Groq LLaMA 3.3-70B", "13"),
+    ("4.6", "   4.6 Quantitative Validation Metrics (PSNR, SNR, SSIM, Tenengrad)", "14"),
+    ("5", "5. System Architecture & Data Structures of LabClarity AI", "15"),
+    ("5.1", "   5.1 High-Level Modular Decomposition & Separation of Concerns", "15"),
+    ("5.2", "   5.2 RESTful API Contracts & Endpoints", "15"),
+    ("6", "6. Algorithmic Implementation & Subsystem Engineering", "17"),
+    ("6.1", "   6.1 Poisson Shot Noise Suppression Pipeline (Anscombe + NLM)", "17"),
+    ("6.2", "   6.2 Sub-Pixel Optical Super-Resolution & Laplacian Synthesis", "17"),
+    ("6.3", "   6.3 Flat-Field Illumination & Vignetting Correction", "17"),
+    ("6.4", "   6.4 Generative AI Multimodal Analysis Engine", "17"),
+    ("7", "7. System Outputs, Empirical Evaluation & Benchmarks", "19"),
+    ("7.1", "   7.1 Interactive Laboratory Workbench Split-Curtain Interface", "19"),
+    ("7.2", "   7.2 Fluorescence Microscopy Benchmark (DAPI/GFP HeLa Cells)", "19"),
+    ("7.3", "   7.3 Brightfield Histopathology Benchmark (H&E Tissue Section)", "20"),
+    ("7.4", "   7.4 Phase Contrast Benchmark (Live-Cell Monolayer)", "21"),
+    ("7.5", "   7.5 Quantitative Metric Comparison Matrix Across Presets", "21"),
+    ("7.6", "   7.6 Sample Generative AI Materials & Methods Synthesis", "22"),
+    ("8", "8. Critical Analysis, Limitations & Future Scope", "23"),
+    ("8.1", "   8.1 Critical Analysis of Design Decisions", "23"),
+    ("8.2", "   8.2 Architectural Constraints & RUO Compliance Boundaries", "23"),
+    ("8.3", "   8.3 Future Technical Roadmap", "23"),
+    ("9", "9. Conclusion", "24"),
+    ("10", "10. References", "24"),
+]
+
+def main():
+    print("Building document with exact page numbers in Table of Contents table...")
+    doc = build_report_doc(EXACT_TOC_ENTRIES)
+
+    print(f"Saving to {OUTPUT_PATH}...")
     doc.save(OUTPUT_PATH)
-    print(f"Saving copy to {DOWNLOADS_OUTPUT_PATH}...")
+    print(f"Saving to {DOWNLOADS_OUTPUT_PATH}...")
     doc.save(DOWNLOADS_OUTPUT_PATH)
-
-    print("SUCCESS: LabClarity AI Project Report generated successfully!")
+    print("SUCCESS: LabClarity AI Project Report updated and saved!")
 
 if __name__ == "__main__":
-    build_report()
+    main()
