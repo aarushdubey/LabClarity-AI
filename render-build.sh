@@ -4,9 +4,10 @@ set -e
 echo "==> [1/3] Installing Python AI Service dependencies..."
 pip install -r requirements.txt
 
-echo "==> [2/3] Installing API Gateway dependencies..."
+echo "==> [2/3] Installing API Gateway dependencies & preheating MongoDB binary..."
 cd backend/api-gateway
-npm install --omit=dev
+npm install
+node -e "import('mongodb-memory-server').then(m => m.MongoMemoryServer.create().then(s => s.stop())).catch(e => console.warn('Preheat note:', e.message))"
 cd ../..
 
 echo "==> [3/3] Building React Frontend..."

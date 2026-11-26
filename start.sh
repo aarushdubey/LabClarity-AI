@@ -13,7 +13,7 @@ export ALLOW_MEMORY_DB="${ALLOW_MEMORY_DB:-1}"
 # Ensure gateway dependencies exist
 if [ ! -d "backend/api-gateway/node_modules" ]; then
   echo "Installing API Gateway dependencies..."
-  (cd backend/api-gateway && npm install --omit=dev)
+  (cd backend/api-gateway && npm install)
 fi
 
 # Ensure frontend build exists
