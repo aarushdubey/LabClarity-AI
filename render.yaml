@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: labclarity-ai
+    runtime: python
+    plan: free
+    buildCommand: ./render-build.sh
+    startCommand: ./start.sh
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: NODE_ENV
+        value: production
+      - key: AI_SERVICE_TOKEN
+        generateValue: true
+      - key: ALLOW_MEMORY_DB
+        value: "1"

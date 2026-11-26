@@ -1,0 +1,1 @@
+import{t as e}from"./Badge-C281yJnR.js";import{it as t}from"./client-wm1u3JDz.js";var n=t(),r={queued:`neutral`,processing:`brand`,completed:`success`,failed:`danger`};function i({status:t}){return(0,n.jsx)(e,{tone:r[t]??`neutral`,dot:!0,children:t})}export{i as t};

@@ -1,0 +1,3 @@
+-r backend/ai-service/requirements.txt
+gunicorn>=21.2.0
+httpx>=0.28.1

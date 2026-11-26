@@ -7,6 +7,8 @@ __pycache__/
 
 # Builds
 dist/
+!frontend/dist/
+!frontend/dist/**
 build/
 coverage/
 .pytest_cache/
@@ -17,6 +19,8 @@ coverage/
 !.env.example
 
 # Runtime data
+uploads/
+enhanced/
 backend/api-gateway/storage*/
 backend/ai-service/weights/*
 !backend/ai-service/weights/README.md

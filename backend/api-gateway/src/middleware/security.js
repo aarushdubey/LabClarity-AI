@@ -6,6 +6,7 @@ import cors from 'cors';
 export function securityMiddleware({ corsOrigins }) {
   return [
     helmet({
+      contentSecurityPolicy: false,
       // Images are served to the SPA on a different origin.
       crossOriginResourcePolicy: { policy: 'cross-origin' },
     }),

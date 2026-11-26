@@ -5,8 +5,8 @@
  */
 import { MongoMemoryServer } from 'mongodb-memory-server';
 
-if (process.env.NODE_ENV === 'production') {
-  console.error('dev-memory-db is for development only.');
+if (process.env.NODE_ENV === 'production' && !process.env.ALLOW_MEMORY_DB) {
+  console.error('dev-memory-db is for development only (set ALLOW_MEMORY_DB=1 to override).');
   process.exit(1);
 }
 
